@@ -114,9 +114,115 @@ Vous obtiendrez ensuite les logs suivants:
 * Le temps de démarrage de l'application :  Started App in 2.991 seconds (JVM running for 3.551)
 
 
+## Instance des beans et Scopes
+
+Pour comprendre comment s'instancie les beans, vous allez créer une classe qui permet de lister tous les beans présents dans le contexte de Spring 
+
+Importez tout d'abord la librairie SL4J 
+```
+ <!-- Logger -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>1.7.30</version>
+    </dependency>
+```
 
 
+créez dans un nouveau package une classe SpringBeanViewer 
+```
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationContext;
+import org.springframework.stereotype.Component;
 
+import java.util.Arrays;
+import java.util.List;
+
+@Component 
+public class SpringBeanViewer {
+
+    Logger logger = LoggerFactory.getLogger(SpringBeanViewer.class);
+
+    SpringBeanViewer(ApplicationContext applicationContext) {
+        List<String> beanList = Arrays.asList(applicationContext.getBeanDefinitionNames());
+        beanList.forEach(bean -> logger.info(bean));
+    }
+
+}
+```
+
+Recompilez et redémarrez l'application. 
+Vous constaterez qu'en annotant @Component, la classe est chargée, et s'éxecute lors du chargement du context de spring.  
+
+Annotez ensuite la class avec un scope  
+```
+@Component
+@Scope("session")
+public class SpringBeanViewer
+```
+
+Recompilez et redémarrez l'application. 
+Vous constaterez qu'en modifiant le scope d'un composant, la classe n'est pas chargée dans le contexte de spring.
+
+Changez le scope avec la valeur singleton 
+```
+@Component
+@Scope("singleton")
+```
+
+Redémarrez l'application. 
+
+Editer la classe SpringBeanViewer 
+```
+*@Component
+@Scope("session")
+public class SpringBeanViewer {
+
+    Logger logger = LoggerFactory.getLogger(SpringBeanViewer.class);
+
+    SpringBeanViewer(ApplicationContext applicationContext) {
+        List<String> beanList = Arrays.asList(applicationContext.getBeanDefinitionNames());
+        beanList.forEach(bean -> logger.info(bean));
+    }
+
+    public void getSpringBeanAnnotation() { }
+
+}
+```
+
+Ajouter la class InfoController dans un package controller:
+
+```
+import com.excilys.formation.spring.rest.config.SpringBeanViewer;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Scope;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@Scope("session")
+public class InfoController {
+
+    SpringBeanViewer springBeanViewer;
+
+    @GetMapping("/context-infos")
+    public ResponseEntity getInfosSession() {
+        springBeanViewer.getSpringBeanAnnotation();
+        return ResponseEntity.accepted().build();
+    }
+
+    @Autowired
+    public void setBeanSession(SpringBeanViewer springBeanViewer) {
+        this.springBeanViewer = springBeanViewer;
+    }
+```
+
+Redémarrez l'application,  constatez les logs de démarrage. 
+
+Tapez ensuite dans une url sur le navigateur de votre choix http://localhost:8080/context-infos/. 
+Constatez les logs. 
 
 
 
