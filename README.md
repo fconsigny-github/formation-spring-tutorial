@@ -224,8 +224,61 @@ Redémarrez l'application,  constatez les logs de démarrage.
 Tapez ensuite dans une url sur le navigateur de votre choix http://localhost:8080/context-infos/. 
 Constatez les logs. 
 
+## Couche Data avec Hibernate (Spring Data JPA) 
 
+Hibernate est un ORM (object relationnal mapping). Il permet de faciliter l'utiliser des POJOs en facilitant les requêtes, les créations des objets et des contraintes entre les différentes Table. 
 
+Pour ce POC nous utiliserons une base H2. H2 est une base en mémoire utilisée en générale pour créer des tests unitaires et/ou des POCs. 
 
+###### Installation de H2 
+
+Ajoutez dans le pom.xml la dépendance à H2 
+
+```
+ <!-- Datasource H2 -->
+    <dependency>
+      <groupId>com.h2database</groupId>
+      <artifactId>h2</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+```
+
+Puis créez un fichier de properties application.properties. 
+Ce fichier servira à configurer toutes nos variables d'environnement. 
+Ajoutez la configuration suivante 
+
+```
+spring.datasource.url=jdbc:h2:mem:testdb
+spring.datasource.driverClassName=org.h2.Driver
+spring.datasource.username=sa
+spring.datasource.password=password
+spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
+spring.h2.console.enabled=true
+spring.h2.console.path=/h2-console
+```
+
+Redémarrez l'application et connectez vous à l'url http://localhost:8080/h2-console 
+
+###### Création d'un modèle persisté en base
+
+Avant toute chose, ajouez le starter spring data jpa 
+```
+  <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-jpa</artifactId>
+    </dependency>
+```
+
+relancez l'application. Constatez les logs. Vous remarquerez la présence de nouveaux logs 
+```
+ HikariPool-1 - Starting...
+2020-08-19 16:13:23.533  INFO 12428 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2020-08-19 16:13:23.545  INFO 12428 --- [           main] o.s.b.a.h2.H2ConsoleAutoConfiguration    : H2 console available at '/h2-console'. Database available at 'jdbc:h2:mem:testdb'
+```
+
+Pour créer nos tables, il nous suffit Grâce à Hibernate de créer simplement des entités. 
+Cet ORM est connecté à notre base H2. 
+
+Créez un package model, et une classe BankAccountEntity
 
 
