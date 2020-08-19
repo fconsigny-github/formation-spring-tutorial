@@ -2,7 +2,7 @@
 Tutoriel API Cocktail
 
 
-# Création du projet 
+## Création du projet 
 
 ###### Création dans Git 
 Vous allez créer un repository dans github en prennant soin de créer également un fichier README.md 
