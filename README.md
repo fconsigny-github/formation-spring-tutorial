@@ -31,33 +31,35 @@ Pour ce tutoriel vous aurez besoin
 ## Création du projet 
 
 ###### Création dans Git 
-Vous allez créer un repository dans github en prennant soin de créer également un fichier README.md 
+Vous allez créer un repository dans http://github.com en prennant soin de créer également un fichier README.md 
+
+> Clonez le projet en local 
+
 
 <!-- [![Github 01](https://github.com/fconsigny-github/formation-spring-tutorial/blob/master/annexes/pictures/01-creation-repository-github.PNG](https://github.com/fconsigny-github/formation-spring-tutorial/blob/master/annexes/pictures/01-creation-repository-github.PNG) -->
+###### Création le projet maven 
 
-
-
-Dans un premier temps vous allez créer un projet maven
-
+> Créez le projet en ligne de commande avec maven
 ```cmd
 mvn archetype:generate -DgroupId=nom-du-package-DartifactId=nom-de-l-application -DarchetypeArtifactId=maven-archetype-quickstart -DinteractiveMode=false
 ```
 
-Vous allez ensuite editer le pom.xml  pour y ajouter les dépendances liées à Spring 
-
-Dans un premier temps le pom parent de springboot :
+###### Ajouter le parent Springboot
 
 ```xml
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>2.2.2.RELEASE</version>
+    <version>2.3.3.RELEASE</version>
     <relativePath />
   </parent>
 ```
 
-Puis le starter WEB qui va amener les dépendances Spring MVC , REST et Configurer par défaut Tomcat en tant que Serveur d'application par défaut.
+Vous trouverez la dernière version de Spring sur Maven Central : https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-parent
 
+###### Ajouter le parent Springboot
+Puis le starter WEB qui va amener les dépendances Spring MVC , REST et Configurer par défaut Tomcat en tant que Serveur d'application par défaut.
+> Ajoutez le pom parent de Springboot
 ```xml
 <dependency>
       <groupId>org.springframework.boot</groupId>
@@ -65,7 +67,9 @@ Puis le starter WEB qui va amener les dépendances Spring MVC , REST et Configur
 </dependency>
 ```
 
-Afin de pouvoir générer  un librable qui va embarquer le tomcat, il est nécessaire d'ajouter le plugin suivant : 
+###### Ajouter le plugin Maven 
+
+> Ce plugin maven est ncécessaire pour créer un livrable qui va embarquer le tomcat 
 
 ```xml
   <build>
