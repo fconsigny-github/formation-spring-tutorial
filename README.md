@@ -11,6 +11,7 @@ Tutoriel sur l'utilisation de Spring avec SpringBoot
 
 - [Prérequis](#Prérequis)
 - [Création du projet](#Création)
+- [Maven Cycle de vie](#Maven)
 - [Instance des beans et Scopes](#Instance)
 - [Couche Data avec Hibernate (Spring Data JPA) ](#Couche) 
 - [API RESTFUL](#API)
@@ -31,21 +32,16 @@ Pour ce tutoriel vous aurez besoin
 ## Création du projet 
 
 ###### Création dans Git 
-Vous allez créer un repository dans http://github.com en prennant soin de créer également un fichier README.md 
+ * Créer un repository dans http://github.com en prennant soin de créer également un fichier README.md 
+ * Cloner le projet en local, privilégier le clone en ssh plutot qu'en https.  
 
-> Clonez le projet en local 
-
-
-<!-- [![Github 01](https://github.com/fconsigny-github/formation-spring-tutorial/blob/master/annexes/pictures/01-creation-repository-github.PNG](https://github.com/fconsigny-github/formation-spring-tutorial/blob/master/annexes/pictures/01-creation-repository-github.PNG) -->
-###### Création le projet maven 
-
-> Créez le projet en ligne de commande avec maven
+###### Création du projet avec maven 
 ```cmd
-mvn archetype:generate -DgroupId=nom-du-package-DartifactId=nom-de-l-application -DarchetypeArtifactId=maven-archetype-quickstart -DinteractiveMode=false
+mvn archetype:generate -DgroupId=nom-du-package -DartifactId=nom-de-l-application -DarchetypeArtifactId=maven-archetype-quickstart -DinteractiveMode=false
 ```
 
 ###### Ajouter le parent Springboot
-
+> Editer le fichier pom.xml 
 ```xml
   <parent>
     <groupId>org.springframework.boot</groupId>
@@ -69,8 +65,9 @@ Puis le starter WEB qui va amener les dépendances Spring MVC , REST et Configur
 
 ###### Ajouter le plugin Maven 
 
-> Ce plugin maven est ncécessaire pour créer un livrable qui va embarquer le tomcat 
+Ce plugin maven est ncécessaire pour créer un livrable executable
 
+> Editer le fichier pom.xml 
 ```xml
   <build>
     <plugins>
@@ -81,6 +78,14 @@ Puis le starter WEB qui va amener les dépendances Spring MVC , REST et Configur
     </plugins>
   </build>
 ```
+
+###### Démarrer le projet
+ > Compiler pour générer le répertoire target
+```cmd
+mvn install
+```
+
+
 
 Pour finir vous allez éditer votre point d'entrée de l'application pour qu'elle puisse prendre en compte la configuration minimale de spring boot: 
 ```java
