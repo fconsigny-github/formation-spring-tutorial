@@ -7,7 +7,7 @@ Tutoriel API Cocktail
 
 > If your `README` has a lot of info, section headers might be nice.
 - [Prérequis](#Prérequis)
-- [Installation](#Création du projet)
+- [Création du projet](#Création du projet)
 - [Features](#Instance des beans et Scopes)
 ---
 
