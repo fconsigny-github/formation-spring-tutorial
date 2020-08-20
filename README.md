@@ -13,6 +13,11 @@ Tutoriel sur l'utilisation de Spring avec SpringBoot
 - [Création du projet](#Création)
 - [Instance des beans et Scopes](#Instance)
 - [Couche Data avec Hibernate (Spring Data JPA) ](#Couche) 
+- [API RESTFUL] (#API)
+- [Application Web (Spring Web MVC)](#Application)
+- [Sécurité (Spring security)](#Sécurité)
+- [Documentation avec Swagger] (#Documentation)
+- [Migration database avec FlywayDB] (#Migration)
 ---
 
 ## Prérequis 
@@ -494,3 +499,13 @@ Modifiez le Controller, Le Service et le Repository, Vous obtiendrez ensuite des
     "amount": 1300
 }
 ```
+
+## API RESTFUL
+
+## Application Web (Spring Web MVC)
+
+## Sécurité (Spring security)
+
+## Documentation avec Swagger
+
+## Migration database avec FlywayDB
