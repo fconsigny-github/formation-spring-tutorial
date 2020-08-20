@@ -1,7 +1,8 @@
 # formation-spring-tutorial
 
+<img src="https://qph.fs.quoracdn.net/main-qimg-8d71d8588b76fbb0cc5cdec3be420d63" title="Spring" alt="Spring" width="100" height="80"/>
+
 Tutoriel sur l'utilisation de Spring avec SpringBoot 
-<img src="https://qph.fs.quoracdn.net/main-qimg-8d71d8588b76fbb0cc5cdec3be420d63" title="Spring" alt="Spring">
 
 
 ---
