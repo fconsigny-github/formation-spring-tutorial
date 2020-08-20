@@ -248,13 +248,25 @@ Ce fichier servira à configurer toutes nos variables d'environnement.
 Ajoutez la configuration suivante 
 
 ```
-spring.datasource.url=jdbc:h2:mem:testdb
-spring.datasource.driverClassName=org.h2.Driver
-spring.datasource.username=sa
-spring.datasource.password=password
-spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
+# Enabling H2 Console
+# Enables the H2 console on http://localhost:8080/h2-console after startup.
 spring.h2.console.enabled=true
-spring.h2.console.path=/h2-console
+spring.datasource.username=excilys
+spring.datasource.password=croissants
+
+# Sets the platform for use during database initialisation
+spring.datasource.platform=h2
+
+# Stops jpa from reinitialising your database. I’m going to be using the scripts.
+#spring.jpa.hibernate.ddl-auto=update
+
+# Dialect Definition
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect
+
+# Hibernate Logs
+logging.level.org.hibernate.SQL=DEBUG
+
+spring.datasource.url=jdbc:h2:mem:testdb;
 ```
 
 Redémarrez l'application et connectez vous à l'url http://localhost:8080/h2-console 
@@ -280,5 +292,124 @@ Pour créer nos tables, il nous suffit Grâce à Hibernate de créer simplement 
 Cet ORM est connecté à notre base H2. 
 
 Créez un package model, et une classe BankAccountEntity
+```
+import javax.persistence.*;
+
+@Entity
+@Table(name = BankAccountEntity.TABLE_NAME)
+public class BankAccountEntity {
+
+    public static final String TABLE_NAME= "tb_bank_account";
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    private Long id;
+
+    @Column(name = "amount")
+    private Double amount;
+}
+```
+relancez l'application et vous constaterez que la table a été créée dans H2. 
+
+
+Il suffit ne reste plus qu'à créer le repository associé dans un nouveau package et le tour est joué ! 
+```
+import com.excilys.formation.spring.rest.models.BankAccountEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface BankAccountRepository  extends JpaRepository<BankAccountEntity, Long> {
+    
+}
+```
+
+Pour confirmer que tout fonctionne,  vous allez créer des tests unitaires qui utiliseront H2. 
+
+Ajoutez la dépendance suivante
+```
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-test</artifactId>
+    <scope>test</scope>
+</dependency>
+```
+
+créez la classe de Test suivante 
+```
+import com.excilys.formation.spring.rest.models.BankAccountEntity;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.test.context.junit4.SpringRunner;
+
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
+
+@RunWith(SpringRunner.class)
+@DataJpaTest
+public class BankAccountRepositoryTest {
+
+    @Autowired
+    BankAccountRepository repository;
+
+    @Test
+    public void should_create_a_bank_account() {
+        BankAccountEntity bankAccountEntity = new BankAccountEntity(0L, 13500.23);
+        repository.save(bankAccountEntity);
+        List<BankAccountEntity> result = repository.findAll();
+        assertEquals(result.size(), 1);
+        assertEquals(bankAccountEntity, result.get(0));
+    }
+}
+```
+
+Compilez le projet. 
+
+Ajoutez un service et et controller pour pouvoir maintenant requêter sur votre application. 
+
+Service 
+```
+import com.excilys.formation.spring.rest.models.BankAccountEntity;
+import com.excilys.formation.spring.rest.repository.BankAccountRepository;
+import org.springframework.stereotype.Service;
+
+@Service
+public class BankAccountService {
+
+    private BankAccountRepository bankAccountRepository;
+
+    public BankAccountService(BankAccountRepository bankAccountRepository) {
+        this.bankAccountRepository = bankAccountRepository;
+    }
+
+    public BankAccountEntity createBankAccount(BankAccountEntity bankAccountEntity) {
+        return this.bankAccountRepository.save(bankAccountEntity);
+    }
+}
+```
+
+Controller 
+```
+@RestController
+@RequestMapping("/account")
+public class BankAccountController {
+
+    private BankAccountService bankAccountService;
+
+    public BankAccountController(BankAccountService bankAccountService) {
+        this.bankAccountService = bankAccountService;
+    }
+
+    @PostMapping
+    public ResponseEntity<BankAccountEntity> createOne(@RequestBody BankAccountEntity bankAccountEntity) {
+        BankAccountEntity bankAccount = bankAccountService.createBankAccount(bankAccountEntity);
+        return ResponseEntity.ok(bankAccount);
+    }
+}
+```
 
 
