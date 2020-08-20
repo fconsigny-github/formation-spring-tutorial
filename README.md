@@ -39,7 +39,7 @@ Vous allez créer un repository dans github en prennant soin de créer égalemen
 
 Dans un premier temps vous allez créer un projet maven
 
-```
+```cmd
 mvn archetype:generate -DgroupId=nom-du-package-DartifactId=nom-de-l-application -DarchetypeArtifactId=maven-archetype-quickstart -DinteractiveMode=false
 ```
 
@@ -101,13 +101,13 @@ public class App
 ```
 
 Compilez l'application en ligne de commande 
-```
+```cmd
 mvn clean install
 ```
 Démarrez l'application 
 
 
-```
+```cmd
 java -jar target/nom-du-jar
 ```
 
