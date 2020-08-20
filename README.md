@@ -1,13 +1,14 @@
 # formation-spring-tutorial
-Tutoriel API Cocktail
+
+Tutoriel sur l'utilisation de Spring avec SpringBoot 
 
 ---
 
 ## Table des matières
 
 - [Prérequis](#Prérequis)
-- [Création du projet](#Initialisation)
-- [Instance des beans et Scopes](#Scopes) Couche
+- [Création du projet](#Création)
+- [Instance des beans et Scopes](#Instance)
 - [Couche Data avec Hibernate (Spring Data JPA) ](#Couche) 
 ---
 
@@ -19,7 +20,7 @@ Pour ce tutoriel vous aurez besoin
 * Postman ou SOAP UI 
 * un IDE 
  
-## Initialisation 
+## Création du projet 
 
 ###### Création dans Git 
 Vous allez créer un repository dans github en prennant soin de créer également un fichier README.md 
