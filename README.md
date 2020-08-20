@@ -77,7 +77,7 @@ Afin de pouvoir générer  un librable qui va embarquer le tomcat, il est néces
 ```
 
 Pour finir vous allez éditer votre point d'entrée de l'application pour qu'elle puisse prendre en compte la configuration minimale de spring boot: 
-```
+```java
 package com.excilys.formation.spring.rest;
 
 import org.springframework.boot.SpringApplication;
