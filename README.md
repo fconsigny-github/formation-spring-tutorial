@@ -7,8 +7,8 @@ Tutoriel API Cocktail
 
 > If your `README` has a lot of info, section headers might be nice.
 - [Prérequis](#Prérequis)
-- [Création du projet](#Création du projet)
-- [Features](#Instance des beans et Scopes)
+- [Création du projet](#Initialisation)
+- [Instance des beans et Scopes](#Scopes)
 ---
 
 ## Prérequis 
@@ -19,7 +19,7 @@ Pour ce tutoriel vous aurez besoin
 * Postman ou SOAP UI 
 * un IDE 
  
-## Création du projet 
+## Initialisation 
 
 ###### Création dans Git 
 Vous allez créer un repository dans github en prennant soin de créer également un fichier README.md 
@@ -131,7 +131,7 @@ Vous obtiendrez ensuite les logs suivants:
 * Le temps de démarrage de l'application :  Started App in 2.991 seconds (JVM running for 3.551)
 
 
-## Instance des beans et Scopes
+## Scopes
 
 Pour comprendre comment s'instancie les beans, vous allez créer une classe qui permet de lister tous les beans présents dans le contexte de Spring 
 
