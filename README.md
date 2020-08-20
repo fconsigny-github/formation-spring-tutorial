@@ -57,7 +57,8 @@ Dans un premier temps le pom parent de springboot :
 ```
 
 Puis le starter WEB qui va amener les dépendances Spring MVC , REST et Configurer par défaut Tomcat en tant que Serveur d'application par défaut.
-```
+
+```xml
 <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-web</artifactId>
@@ -65,7 +66,8 @@ Puis le starter WEB qui va amener les dépendances Spring MVC , REST et Configur
 ```
 
 Afin de pouvoir générer  un librable qui va embarquer le tomcat, il est nécessaire d'ajouter le plugin suivant : 
-```
+
+```xml
   <build>
     <plugins>
       <plugin>
@@ -111,7 +113,7 @@ java -jar target/nom-du-jar
 
 Vous obtiendrez ensuite les logs suivants: 
 
-```
+```cmd
   .   ____          _            __ _ _
  /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
 ( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
@@ -145,7 +147,7 @@ Vous obtiendrez ensuite les logs suivants:
 Pour comprendre comment s'instancie les beans, vous allez créer une classe qui permet de lister tous les beans présents dans le contexte de Spring 
 
 Importez tout d'abord la librairie SL4J 
-```
+```xml
  <!-- Logger -->
     <dependency>
       <groupId>org.slf4j</groupId>
@@ -156,7 +158,7 @@ Importez tout d'abord la librairie SL4J
 
 
 créez dans un nouveau package une classe SpringBeanViewer 
-```
+```java
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
@@ -182,7 +184,7 @@ Recompilez et redémarrez l'application.
 Vous constaterez qu'en annotant @Component, la classe est chargée, et s'éxecute lors du chargement du context de spring.  
 
 Annotez ensuite la class avec un scope  
-```
+```java
 @Component
 @Scope("session")
 public class SpringBeanViewer
@@ -192,7 +194,7 @@ Recompilez et redémarrez l'application.
 Vous constaterez qu'en modifiant le scope d'un composant, la classe n'est pas chargée dans le contexte de spring.
 
 Changez le scope avec la valeur singleton 
-```
+```java
 @Component
 @Scope("singleton")
 ```
@@ -200,8 +202,8 @@ Changez le scope avec la valeur singleton
 Redémarrez l'application. 
 
 Editer la classe SpringBeanViewer 
-```
-*@Component
+```java
+@Component
 @Scope("session")
 public class SpringBeanViewer {
 
@@ -219,7 +221,7 @@ public class SpringBeanViewer {
 
 Ajouter la class InfoController dans un package controller:
 
-```
+```java
 import com.excilys.formation.spring.rest.config.SpringBeanViewer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
@@ -260,7 +262,7 @@ Pour ce POC nous utiliserons une base H2. H2 est une base en mémoire utilisée 
 
 Ajoutez dans le pom.xml la dépendance à H2 
 
-```
+```xml
  <!-- Datasource H2 -->
     <dependency>
       <groupId>com.h2database</groupId>
@@ -273,7 +275,7 @@ Puis créez un fichier de properties application.properties.
 Ce fichier servira à configurer toutes nos variables d'environnement. 
 Ajoutez la configuration suivante 
 
-```
+```yml
 # Enabling H2 Console
 # Enables the H2 console on http://localhost:8080/h2-console after startup.
 spring.h2.console.enabled=true
@@ -300,7 +302,7 @@ Redémarrez l'application et connectez vous à l'url http://localhost:8080/h2-co
 ###### Création d'un modèle persisté en base
 
 Avant toute chose, ajouez le starter spring data jpa 
-```
+```xml
   <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-data-jpa</artifactId>
@@ -318,7 +320,7 @@ Pour créer nos tables, il nous suffit Grâce à Hibernate de créer simplement 
 Cet ORM est connecté à notre base H2. 
 
 Créez un package model, et une classe BankAccountEntity
-```
+```java
 import javax.persistence.*;
 
 @Entity
@@ -340,7 +342,7 @@ relancez l'application et vous constaterez que la table a été créée dans H2.
 
 
 Il suffit ne reste plus qu'à créer le repository associé dans un nouveau package et le tour est joué ! 
-```
+```java
 import com.excilys.formation.spring.rest.models.BankAccountEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -354,7 +356,7 @@ public interface BankAccountRepository  extends JpaRepository<BankAccountEntity,
 Pour confirmer que tout fonctionne,  vous allez créer des tests unitaires qui utiliseront H2. 
 
 Ajoutez la dépendance suivante
-```
+```xml
 <dependency>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-test</artifactId>
@@ -363,7 +365,7 @@ Ajoutez la dépendance suivante
 ```
 
 créez la classe de Test suivante 
-```
+```java
 import com.excilys.formation.spring.rest.models.BankAccountEntity;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -398,7 +400,7 @@ Compilez le projet.
 Ajoutez un service et et controller pour pouvoir maintenant requêter sur votre application. 
 
 Service 
-```
+```java
 import com.excilys.formation.spring.rest.models.BankAccountEntity;
 import com.excilys.formation.spring.rest.repository.BankAccountRepository;
 import org.springframework.stereotype.Service;
@@ -419,7 +421,7 @@ public class BankAccountService {
 ```
 
 Controller 
-```
+```java
 @RestController
 @RequestMapping("/account")
 public class BankAccountController {
@@ -441,14 +443,14 @@ public class BankAccountController {
 Créez ensuite un Endpoint pour récupérer une ressource
 
 Service 
-```
+```java
 public Optional<BankAccountEntity> findOne(Long id) {
         return bankAccountRepository.findById(id);
     }
 ```
 
 Controller 
-```
+```java
   @GetMapping("/{id}")
     public ResponseEntity<BankAccountEntity> findOne(@PathVariable Long id) {
         Optional<BankAccountEntity>  bankAccountEntity = bankAccountService.findOne(id);
@@ -461,7 +463,7 @@ Controller
 ```
 
 En testant avec un Outil tel que SoapUI ou Postman, vous remarquez que les IDs se suivent.  La plupart du temps 
-```
+```json
 {
     "id": 1,
     "amount": 1200
@@ -479,7 +481,7 @@ En modifiant uniquement le chemin de ma ressource.
 
 Il existe plusieurs façon de sécuriser l'application, l'une d'elles consiste à utiliser des UUIDs à la place d'ID auto-incrémentaux. Modifiez le model: 
 
-```
+```java
    @Id
    @GeneratedValue(generator = "uuid2")
    @GenericGenerator(name = "uuid2", strategy = "org.hibernate.id.UUIDGenerator")
@@ -488,7 +490,7 @@ Il existe plusieurs façon de sécuriser l'application, l'une d'elles consiste �
 ```
 
 Modifiez le Controller, Le Service et le Repository, Vous obtiendrez ensuite des objets de la forme
-```
+```json
 {
     "id": "c19b3fb1-6e16-4a91-b789-5e570f5f1ca8",
     "amount": 1200
