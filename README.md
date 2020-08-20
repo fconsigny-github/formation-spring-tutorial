@@ -47,7 +47,7 @@ Vous allez ensuite editer le pom.xml  pour y ajouter les dépendances liées à 
 
 Dans un premier temps le pom parent de springboot :
 
-```maven
+```xml
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
