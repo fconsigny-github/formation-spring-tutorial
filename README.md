@@ -1,7 +1,24 @@
 # formation-spring-tutorial
 Tutoriel API Cocktail
 
+---
 
+## Table des matières
+
+> If your `README` has a lot of info, section headers might be nice.
+- [Prérequis](#Prérequis)
+- [Installation](#Création du projet)
+- [Features](#Instance des beans et Scopes)
+---
+
+## Prérequis 
+
+Pour ce tutoriel vous aurez besoin
+* Maven en ligne de commande  
+* Java JDK 8 
+* Postman ou SOAP UI 
+* un IDE 
+ 
 ## Création du projet 
 
 ###### Création dans Git 
