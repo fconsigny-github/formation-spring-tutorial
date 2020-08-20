@@ -412,4 +412,64 @@ public class BankAccountController {
 }
 ```
 
+Créez ensuite un Endpoint pour récupérer une ressource
 
+Service 
+```
+public Optional<BankAccountEntity> findOne(Long id) {
+        return bankAccountRepository.findById(id);
+    }
+```
+
+Controller 
+```
+  @GetMapping("/{id}")
+    public ResponseEntity<BankAccountEntity> findOne(@PathVariable Long id) {
+        Optional<BankAccountEntity>  bankAccountEntity = bankAccountService.findOne(id);
+
+        return bankAccountEntity
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+
+    }
+```
+
+En testant avec un Outil tel que SoapUI ou Postman, vous remarquez que les IDs se suivent.  La plupart du temps 
+```
+{
+    "id": 1,
+    "amount": 1200
+}
+
+{
+    "id": 2,
+    "amount": 1200
+}
+```
+
+Cela représente très souvent une faille de sécurité. Dans une API REST utilise très souvent l'ID dans le chemin de la ressource, telle que "http://mon-api/ma-ressource/1/. 
+En modifiant uniquement le chemin de ma ressource. 
+
+
+Il existe plusieurs façon de sécuriser l'application, l'une d'elles consiste à utiliser des UUIDs à la place d'ID auto-incrémentaux. Modifiez le model: 
+
+```
+   @Id
+   @GeneratedValue(generator = "uuid2")
+   @GenericGenerator(name = "uuid2", strategy = "org.hibernate.id.UUIDGenerator")
+   @Column(name = "id")
+   private UUID id;
+```
+
+Modifiez le Controller, Le Service et le Repository, Vous obtiendrez ensuite des objets de la forme
+```
+{
+    "id": "c19b3fb1-6e16-4a91-b789-5e570f5f1ca8",
+    "amount": 1200
+}
+
+{
+    "id": "757c0494-a7b7-4f6e-970c-277fcd59ca77",
+    "amount": 1300
+}
+```
