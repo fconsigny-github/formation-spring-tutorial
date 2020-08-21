@@ -40,6 +40,19 @@ Pour ce tutoriel vous aurez besoin
 mvn archetype:generate -DgroupId=nom-du-package -DartifactId=nom-de-l-application -DarchetypeArtifactId=maven-archetype-quickstart -DinteractiveMode=false
 ```
 
+###### Maven (Cycle de vie)
+
+mvn clean: Il suprime le répertoire target 
+mvn validate: vérifie que la configuration du projet est correcte (Analyse le pom.xml)
+mvn compile: compile les sources du projet 
+mvn test: exécute les tests unitaires 
+mvn package: créer le livrable, JAR WAR selon ce qui a été configuré dans la balise <package></package> du pom.xml 
+mvn install: déploie le livrable dans le repository local (.m2/repository)
+mvn deploy: déploie le livrable dans le repository distant
+
+Pour rappel, tous les paramètres de configuration de maven se situent dans le répertoire maven/conf/settings.xml
+
+
 ###### Ajouter le parent Springboot
 > Editer le fichier pom.xml 
 ```xml
@@ -51,17 +64,7 @@ mvn archetype:generate -DgroupId=nom-du-package -DartifactId=nom-de-l-applicatio
   </parent>
 ```
 
-Vous trouverez la dernière version de Spring sur Maven Central : https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-parent
-
-###### Ajouter le parent Springboot
-Puis le starter WEB qui va amener les dépendances Spring MVC , REST et Configurer par défaut Tomcat en tant que Serveur d'application par défaut.
-> Ajoutez le pom parent de Springboot
-```xml
-<dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-web</artifactId>
-</dependency>
-```
+Vous trouverez la dernière version du starter Springboot sur Maven Central : https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-parent
 
 ###### Ajouter le plugin Maven 
 
@@ -79,15 +82,8 @@ Ce plugin maven est ncécessaire pour créer un livrable executable
   </build>
 ```
 
-###### Démarrer le projet
- > Compiler pour générer le répertoire target
-```cmd
-mvn install
-```
+###### Configurer le point d'entré de l'application 
 
-
-
-Pour finir vous allez éditer votre point d'entrée de l'application pour qu'elle puisse prendre en compte la configuration minimale de spring boot: 
 ```java
 package com.excilys.formation.spring.rest;
 
@@ -109,18 +105,24 @@ public class App
 
 ```
 
-Compilez l'application en ligne de commande 
+###### Démarrer le projet
+ > Compiler pour générer le répertoire target
+```cmd
+mvn install
+```
+> Nettoyer le répertoire target s'il est déjà présent
 ```cmd
 mvn clean install
 ```
-Démarrez l'application 
 
-
+> Démarrer l'application 
 ```cmd
 java -jar target/nom-du-jar
 ```
 
-Vous obtiendrez ensuite les logs suivants: 
+###### Logs de démarrage
+
+> Une fois l'application configurée, compilée, les logs suivant doivent apparaitre
 
 ```cmd
   .   ____          _            __ _ _
@@ -143,7 +145,8 @@ Vous obtiendrez ensuite les logs suivants:
 2020-08-19 12:35:00.411  INFO 11044 --- [           main] com.excilys.formation.spring.rest.App    : Started App in 2.991 seconds (JVM running for 3.551)
 ```
 
-* Vous pouvez y voir le nom du jar exécuté : v1.0-SNAPSHOT
+> Sont visibles
+* Le nom du jar exécuté : v1.0-SNAPSHOT
 * Le processus créé : PID 11044 
 * Le profil lancé :  No active profile set, falling back to default profiles: default
 * Le serveur d'application et le port utilisé : Tomcat initialized with port(s): 8080 (http)
