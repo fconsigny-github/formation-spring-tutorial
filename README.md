@@ -63,11 +63,11 @@ Pour rappel, tous les paramètres de configuration de maven se situent dans le r
   </parent>
 ```
 
-Vous trouverez la dernière version du starter Springboot sur Maven Central : https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-parent
+La dernière version du starter Springboot se trouve sur Maven Central : https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-parent
 
 ###### Ajouter le plugin Maven 
 
-Ce plugin maven est ncécessaire pour créer un livrable executable
+Le plugin maven est nécessaire pour créer un livrable executable
 
 > Editer le fichier pom.xml 
 ```xml
