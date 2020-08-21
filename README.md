@@ -42,13 +42,13 @@ mvn archetype:generate -DgroupId=nom-du-package -DartifactId=nom-de-l-applicatio
 
 ###### Maven (Cycle de vie)
 
-mvn clean: Il suprime le répertoire target 
-mvn validate: vérifie que la configuration du projet est correcte (Analyse le pom.xml)
-mvn compile: compile les sources du projet 
-mvn test: exécute les tests unitaires 
-mvn package: créer le livrable, JAR WAR selon ce qui a été configuré dans la balise <package></package> du pom.xml 
-mvn install: déploie le livrable dans le repository local (.m2/repository)
-mvn deploy: déploie le livrable dans le repository distant
+* mvn clean: Il suprime le répertoire target 
+* mvn validate: vérifie que la configuration du projet est correcte (Analyse le pom.xml)
+* mvn compile: compile les sources du projet 
+* mvn test: exécute les tests unitaires 
+* mvn package: créer le livrable, JAR WAR selon ce qui a été configuré dans la balise <package></package> du pom.xml 
+* mvn install: déploie le livrable dans le repository local (.m2/repository)
+* mvn deploy: déploie le livrable dans le repository distant
 
 Pour rappel, tous les paramètres de configuration de maven se situent dans le répertoire maven/conf/settings.xml
 
