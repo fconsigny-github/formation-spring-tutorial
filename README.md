@@ -50,7 +50,7 @@ mvn archetype:generate -DgroupId=nom-du-package -DartifactId=nom-de-l-applicatio
 * mvn install: déploie le livrable dans le repository local (.m2/repository)
 * mvn deploy: déploie le livrable dans le repository distant
 
-Pour rappel, tous les paramètres de configuration de maven se situent dans le répertoire maven/conf/settings.xml
+Pour rappel, tous les paramètres de configuration de maven se situent dans le répertoire **maven/conf/settings.xml**
 
 
 ###### Ajouter le parent Springboot
