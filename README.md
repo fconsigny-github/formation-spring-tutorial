@@ -993,6 +993,51 @@ On peut aussi écrire
 
 Pour un rôle, Spring Security va chercher une authority nommée "ROLE_" + authority
 
+La configuration précédente permet de gérer la sécurité sur des endpoints donnés, mais comment sécuriser plus finement l'application ?
+
+##### Method Security
+
+```java
+@EnableGlobalMethodSecurity(
+  prePostEnabled = true, // (1)
+  securedEnabled = true, // (2)
+  jsr250Enabled = true) // (3)
+``` 
+
+1. active @PreAuthorize et @PostAuthorize
+2. active @Secured
+3. active @RolesAllowed
+
+```java
+package com.excilys.formation.spring.security.service;
+
+import javax.annotation.security.RolesAllowed;
+import org.springframework.security.access.annotation.Secured;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.stereotype.Service;
+
+@Service
+public class HelloService {
+  @Secured("ROLE_USER") // 1
+  public String userHello() {
+    return "hello user";
+  }
+
+  @RolesAllowed("ADMIN") // 2
+  public String adminHello() {
+    return "hello admin";
+  }
+
+  @PreAuthorize("isAuthenticated()") // 3
+  public String publicHello() {
+    return "hello";
+  }
+}
+```
+1. @Secured permet de spécifier une authority
+2. @RolesAllowed permet de spécifier un rôle. Ce n'est pas une annotation spécifique à Spring.
+3. @PreAuthorize permet d'utiliser le SpEL (Spring Expression Language) pour paramétrer plus finement l'authorization
+
 ## Documentation avec Swagger
 
 ## Migration database avec FlywayDB
