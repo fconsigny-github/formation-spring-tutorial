@@ -517,7 +517,242 @@ Modifiez le Controller, Le Service et le Repository, Vous obtiendrez ensuite des
 
 ## Application Web (Spring Web MVC)
 
-## Sécurité (Spring security)
+## Sécurité
+
+### Principes
+
+##### Authentication
+
+L'authentification (authentication en anglais) permet de vérifier que l'utilisateur est bien qui il prétend être
+
+User: Je suis l'administrateur du site web, mon **username** est : admin
+
+Webapp: Très bien, quel est votre mot de passe ?
+
+User: Mon **password** est azerty1234
+
+Webapp: Ok, bienvenue admin
+
+##### Authorization
+
+L'authorisation (authorization en anglais) permet de définir ce que l'utilisateur a le droit de faire
+
+User: Je veux voir les informations de l'utilisateur Michel
+
+Webapp: Vous avez le rôle **USER**, vous n'avez pas la permission de voir les informations des autres utilisateurs
+
+Admin: Je veux voir les informations de l'utilisateur Michel
+
+Webapp: Vous avez le rôle **ADMIN**, vous avez la permission de voir les informations des autres utilisateurs
+
+#### Servlet Filter
+
+Avant de rajouter spring security au projet, nous allons essayer de mettre en place une sécurité pour les endpoints en pur Java
+
+##### Tout d'abord, qu'est-ce qu'un filter ?
+
+Un **Filter** est un composant qui va se positionner entre le browser et un Servlet Java
+
+##### Quel est le rapport avec l'authentification et l'authorization ?
+
+On ne veut pas ajouter la logique de la sécurité dans nos servlets (i.e DispatcherServlet) ou nos @Controllers / @RestControllers 
+
+Le filter va donc exécuter cette logique avant que la requête n'atteigne un @Controller
+
+##### Exemple
+
+Vous allez créer un @Controller HelloController qui expose /api/hello/public, /api/hello/user et /api/hello/admin
+
+Puis créez un filter qui va comparer les paramètres **username** et **password** de la requête aux crédentials : "admin:admin" et "user:password"
+
+L'URL /api/hello/public doit pouvoir être vue sans authentification
+
+L'URL /api/hello/user doit pouvoir être vue par **user** et **admin**
+
+L'URL /api/hello/admin doit pouvoir être vue par **admin**
+
+##### Comment on fait ?
+
+On va d'abord créer un service UserService qui va servir à faire l'authentification et l'authorisation des utilisateurs
+```java
+package com.excilys.formation.spring.security.service;
+
+import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import org.springframework.stereotype.Service;
+
+@Service
+public class UserService {
+  private static final Map<String, String> USER_PASSWORD;
+  private static final Map<String, List<String>> ROLES;
+
+  static {
+    USER_PASSWORD = new HashMap<>();
+    USER_PASSWORD.put("user", "password");
+    USER_PASSWORD.put("admin", "admin");
+
+    ROLES = new HashMap<>();
+    ROLES.put("user", asList("USER"));
+    ROLES.put("admin", asList("USER", "ADMIN"));
+  }
+
+  public boolean checkUser(String username, String password) {
+    return username != null
+        && USER_PASSWORD.containsKey(username)
+        && USER_PASSWORD.get(username).equals(password);
+  }
+
+  public boolean checkRoles(String username, String role) {
+    return username != null
+        && ROLES.getOrDefault(username, emptyList()).contains(role);
+  }
+}
+```
+
+puis un SecurityFilter
+
+```java
+package com.excilys.formation.spring.security.filter;
+
+import com.excilys.formation.spring.security.service.UserService;
+import java.io.IOException;
+import javax.servlet.FilterChain;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpFilter;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import org.springframework.stereotype.Component;
+
+@Component
+public class SecurityServletFilter extends HttpFilter {
+  private final UserService userService;
+
+  public SecurityServletFilter(UserService userService) {
+    this.userService = userService;
+  }
+
+  @Override
+  protected void doFilter(HttpServletRequest request, HttpServletResponse response,
+      FilterChain chain) throws IOException, ServletException {
+
+    if (request.getRequestURI().equals("/api/hello/public")) { // 1
+      return;
+    }
+
+    User user = extractUserFromRequest(request); // 2
+
+    if (!authenticated(user)) { // 3
+      response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+      return;
+    }
+
+    if (!authorized(user, request)) { // 4
+      response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+      return;
+    }
+
+    chain.doFilter(request, response); // 7
+  }
+
+  private User extractUserFromRequest(HttpServletRequest request) {
+    return new User(request.getParameter("username"), request.getParameter("password"));
+  }
+
+  private boolean authenticated(User user) {
+    return userService.checkUser(user.username, user.password);
+  }
+
+  private boolean authorized(User user, HttpServletRequest request) {
+    switch (request.getRequestURI()) {
+      case "/api/hello/admin":
+        return userService.checkRoles(user.username, "ADMIN"); // 5
+      case "/api/hello/user":
+        return userService.checkRoles(user.username, "USER"); // 6
+      default:
+        return true;
+    }
+  }
+
+  private static class User {
+    private final String username;
+    private final String password;
+
+    User(String username, String password) {
+      this.username = username;
+      this.password = password;
+    }
+  }
+}
+```
+
+1. on accepte la requête si l'URL est "/api/hello/public"
+2. on extrait les informations de l'utilisateur dans une classe User
+3. on vérifie que l'utilisateur est bien qui il prétend être (authentification)
+4. on vérifie que l'utilisateur a la permission d'accéder à l'URL
+5. s'il a le rôle ADMIN pour "/api/hello/admin"
+6. s'il a le rôle USER pour "/api/hello/user"
+7. si tous les checks passent on peut continuer vers le DispatcherServlet
+
+##### FilterChain
+
+Ce code fonctionne mais n'est pas vraiment maintenable.
+
+On peut séparer le filter en plusieurs filters et les "chainer"
+
+Ex: PublicMethodFilter -> AuthenticationFilter -> AuthorizationFilter -> DispatcherServlet
+
+Ce concept s'appelle "FilterChain"
+```java
+chain.doFilter(request, response); // 7
+```
+Cette ligne transmet la requête au filter suivant, ou au DispatcherServlet si c'est le dernier de la chaîne
+
+### Spring Security
+
+###### Dépendances
+
+Ajoutez les dépendances suivantes
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-security</artifactId>
+</dependency>
+```
+et 
+```xml
+<dependency>
+    <groupId>org.springframework.security</groupId>
+    <artifactId>spring-security-test</artifactId>
+    <scope>test</scope>
+</dependency>
+```
+
+Ces dépendances fournissent tout ce qui est nécessaire pour configurer Spring Security et pour tester
+
+En redémarrant l'application, on peut voir des nouvelles lignes dans les logs
+```
+2020-08-21 16:11:21.553  INFO 15277 --- [           main] o.s.s.web.DefaultSecurityFilterChain     : Creating filter chain: any request, [org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@381d7219, org.springframework.security.web.context.SecurityContextPersistenceFilter@67a3bd51, org.springframework.security.web.header.HeaderWriterFilter@5e048149, org.springframework.security.web.csrf.CsrfFilter@84487f4, org.springframework.security.web.authentication.logout.LogoutFilter@60859f5a, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter@1fde0371, org.springframework.security.web.authentication.ui.DefaultLoginPageGeneratingFilter@2ab0702e, org.springframework.security.web.authentication.ui.DefaultLogoutPageGeneratingFilter@49fe3142, org.springframework.security.web.authentication.www.BasicAuthenticationFilter@615e3f51, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@56913163, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@14229fa7, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@13fed1ec, org.springframework.security.web.session.SessionManagementFilter@3d5790ea, org.springframework.security.web.access.ExceptionTranslationFilter@29eda4f8, org.springframework.security.web.access.intercept.FilterSecurityInterceptor@1835d3ed]
+```
+
+##### DefaultSecurityFilterChain
+
+Spring Security crée par défaut une FilterChain constituée de 15 filters
+
+![DefaultSecurityFilterChain](annexes/pictures/filterchain.png?raw=true "Filter Chain")
+
+* BasicAuthenticationFilter: Tries to find a Basic Auth HTTP Header on the request and if found, tries to authenticate the user with the header’s username and password.
+
+* UsernamePasswordAuthenticationFilter: Tries to find a username/password request parameter/POST body and if found, tries to authenticate the user with those values.
+
+* DefaultLoginPageGeneratingFilter: Generates a login page for you, if you don’t explicitly disable that feature. THIS filter is why you get a default login page when enabling Spring Security.
+
+* DefaultLogoutPageGeneratingFilter: Generates a logout page for you, if you don’t explicitly disable that feature.
+
+* FilterSecurityInterceptor: Does your authorization.
 
 ## Documentation avec Swagger
 
