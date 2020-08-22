@@ -549,7 +549,7 @@ Webapp: Vous avez le rôle **ADMIN**, vous avez la permission de voir les inform
 
 Avant de rajouter spring security au projet, nous allons essayer de mettre en place une sécurité pour les endpoints en pur Java
 
-##### Tout d'abord, qu'est-ce qu'un filter ?
+##### C'est quoi un filter ?
 
 Un **Filter** est un composant qui va se positionner entre le browser et un Servlet Java
 
@@ -713,7 +713,7 @@ Cette ligne transmet la requête au filter suivant, ou au DispatcherServlet si c
 
 ### Spring Security
 
-###### Dépendances
+##### Dépendances
 
 Ajoutez les dépendances suivantes
 ```xml
@@ -742,17 +742,256 @@ En redémarrant l'application, on peut voir des nouvelles lignes dans les logs
 
 Spring Security crée par défaut une FilterChain constituée de 15 filters
 
-![DefaultSecurityFilterChain](annexes/pictures/filterchain.png?raw=true "Filter Chain")
+![DefaultSecurityFilterChain](annexes/pictures/filterchain.png?raw=true "Default Filter Chain")
 
-* BasicAuthenticationFilter: Tries to find a Basic Auth HTTP Header on the request and if found, tries to authenticate the user with the header’s username and password.
+* BasicAuthenticationFilter: Essaie d'authentifier l'utilisateur en regardant dans les headers HTTP.
 
-* UsernamePasswordAuthenticationFilter: Tries to find a username/password request parameter/POST body and if found, tries to authenticate the user with those values.
+* UsernamePasswordAuthenticationFilter: Essaie d'authentifier l'utilisateur en cherchant un username/password dans les paramètres/body de la requête.
 
-* DefaultLoginPageGeneratingFilter: Generates a login page for you, if you don’t explicitly disable that feature. THIS filter is why you get a default login page when enabling Spring Security.
+* DefaultLoginPageGeneratingFilter: Génère une page de login si l'option est activée (activée par défaut).
 
-* DefaultLogoutPageGeneratingFilter: Generates a logout page for you, if you don’t explicitly disable that feature.
+* DefaultLogoutPageGeneratingFilter: Génère une page de logout si l'option est activée (activée par défaut).
 
-* FilterSecurityInterceptor: Does your authorization.
+* FilterSecurityInterceptor: Applique les authorizations.
+
+#### Configuration
+
+Pour configurer Spring Security, on crée une classe de configuration Spring qui hérite de **WebSecurityConfigurerAdapter**
+```java
+package com.excilys.formation.spring.security.config;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+
+@Configuration
+@EnableWebSecurity // 1
+public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
+
+  @Override
+  protected void configure(HttpSecurity http) throws Exception {  // (2)
+        http
+            .authorizeRequests()
+              .antMatchers("/api/hello/public/**").permitAll() // 3
+              .antMatchers("/api/hello/admin/**").hasRole("ADMIN") // 4
+              .anyRequest().authenticated() // 5
+              .and()
+            .formLogin() // 6
+              .loginPage("/login")
+              .permitAll()
+              .and()
+            .logout() // 7
+              .permitAll()
+              .and()
+            .httpBasic(); // 8
+  }
+}
+```
+
+1. Permet à Spring de considérer cette classe de configuration comme une configuration de sécurité.
+   
+2. On override la configuration par défaut
+ 
+    ```java
+      // default configuration in WebSecurityConfigurerAdapter
+      protected void configure(HttpSecurity http) throws Exception {
+        http
+            .authorizeRequests()
+              .anyRequest().authenticated()
+              .and()
+            .formLogin()
+              .and()
+            .httpBasic();
+      }
+    ``` 
+    WebSecurityConfigurerAdapter propose un **DSL** pour configurer plus facilement la sécurité
+   
+3. Toutes les requêtes arrivant sur /api/hello/public (et /api/hello/public/whatever, /api/hello/public/whatever/whatever, ...) n'ont pas besoin d'être authentifié (.permitAll()).
+   
+4. Toutes les requêtes arrivant sur /api/hello/admin (et /api/hello/admin/whatever, /api/hello/admin/whatever/whatever, ...) doivent d'être authentifiées et l'utilisateur doit avoir le rôle ADMIN (.hasRole("ADMIN")).
+  
+5. Toutes les autres requêtes doivent être authentifiées.
+   
+6. On configure une page de login (username/password dans un formulaire) avec une page custom (/login). On n'a pas besoin d'être authentifié pour arriver sur cette page (sinon on ne peut jamais s'authentifier).
+   
+7. Pareil pour le logout
+   
+8. On configure l'[authentification Basic](https://en.wikipedia.org/wiki/Basic_access_authentication).
+
+#### Authentification
+
+Maintenant se pose la question "Comment Spring authentifie-t'il un utilisateur ?"
+
+Créez une table users en base de données
+```
+create table users (username varchar(255) primary key, password varchar(255));
+```
+Cette table contient les usernames des utilisateurs et leur password (haché, pas en clair hein)
+
+##### UserDetailsService
+
+Pour savoir comment récupérer les informations d'un utilisateur, on doit configurer un bean de type UserDetailsService
+```java
+package org.springframework.security.core.userdetails;
+
+public interface UserDetailsService {
+  UserDetails loadUserByUsername(String username) throws UsernameNotFoundException;
+}
+```
+
+On crée donc une classe implémentant cette interface
+```java
+package com.excilys.formation.spring.security.service;
+
+import static java.util.stream.Collectors.toList;
+import static java.util.Collections.emptyList;
+
+import java.util.List;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+
+@Service
+public class MyUserDetailsService implements UserDetailsService {
+  private final UserRepository userRepository;
+
+  public MyUserDetailsService(UserRepository userRepository) {
+    this.userRepository = userRepository;
+  }
+
+  @Override
+  public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+    return mapToUserDetails(username);
+  }
+
+  private UserDetails mapToUserDetails(String username) {
+    UserEntity userEntity = userRepository.findUserByUsername(username);
+        
+    return new User(userEntity.getUsername(), userEntity.getPassword(), emptyList());
+  }
+}
+```
+
+En supposant que UserEntity est une @Entity et UserRepository un @Repository
+
+On peut aussi utiliser des implémentations déjà existantes de UserDetailsService
+* JdbcUserDetailsManager : implémentation avec une base de données
+```java
+@Bean
+public JdbcUserDetailsManager jdbcUserDetailsManager(DataSource dataSource) {
+  return new JdbcUserDetailsManager(dataSource);
+}
+```
+
+* InMemoryUserDetailsManager : implémentation en mémoire
+```java
+@Bean
+public InMemoryUserDetailsManager inMemoryUserDetailsManager(PasswordEncoder passwordEncoder) {
+  UserDetails user = User.withUsername("user")
+      .password(passwordEncoder.encode("password"))
+      .roles("USER")
+      .build();
+  UserDetails admin = User.withUsername("admin")
+      .password(passwordEncoder.encode("admin"))
+      .roles("ADMIN", "USER")
+      .build();
+    
+  return new InMemoryUserDetailsManager(asList(user, admin));
+}
+```
+
+##### Password Encoder
+Pour que Spring Security puisse hacher les passwords, il faut lui spécifier un PasswordEncoder
+```java
+@Bean
+public PasswordEncoder passwordEncoder() {
+  return new BCryptPasswordEncoder();
+}
+```
+
+#### Authorization
+
+GrantedAuthority est l'interface utilisée par UserDetailsService pour définir les permissions d'un utilisateur
+
+Créez une table authorities en base de données
+```
+create table authorities (username varchar(255), authority varchar(68), foreign key (username) references users(username));
+```
+Cette table contient les rôles des utilisateurs
+
+Et on change l'implémentation de UserDetailsService
+```java
+package com.excilys.formation.spring.security.service;
+
+import static java.util.stream.Collectors.toList;
+
+import java.util.List;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+
+@Service
+public class MyUserDetailsService implements UserDetailsService {
+  private final UserRepository userRepository;
+
+  public MyUserDetailsService(UserRepository userRepository) {
+    this.userRepository = userRepository;
+  }
+
+  @Override
+  public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+    return mapToUserDetails(username);
+  }
+
+  private UserDetails mapToUserDetails(String username) {
+    UserEntity userEntity = userRepository.findUserByUsername(username);
+    
+    List<GrantedAuthority> authorities = mapAuthorities(userEntity.getRoles());
+    
+    return new User(userEntity.getUsername(), userEntity.getPassword(), authorities);
+  }
+
+  private List<GrantedAuthority> mapAuthorities(List<String> roles) {
+    return roles.stream().map(SimpleGrantedAuthority::new).collect(toList());
+  }
+}
+```
+
+#### Configuration
+
+Comme vu plus haut, on peut configurer les roles dans les WebSecurityConfigurerAdapter.
+```java
+@Override
+protected void configure(HttpSecurity http) throws Exception {
+    http
+        .authorizeRequests()
+          .antMatchers("/api/hello/admin/**").hasAuthority("ROLE_ADMIN")
+          .antMatchers("/api/hello/user/**").hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
+          .anyRequest().authenticated()
+          .and()
+        .formLogin()
+          .and()
+        .httpBasic();
+}
+```
+
+Pour accéder à "/api/hello/admin", l'utilisateur doit avoir l'authority "ROLE_ADMIN".
+Pour accéder à "/api/hello/user", l'utilisateur doit avoir l'authority "ROLEUSER" ou "ROLE_ADMIN".
+
+On peut aussi écrire 
+```java
+  .antMatchers("/api/hello/admin/**").hasRole("ADMIN")
+  .antMatchers("/api/hello/user/**").hasRole("USER", "ADMIN")        
+```
+
+Pour un rôle, Spring Security va chercher une authority nommée "ROLE_" + authority
 
 ## Documentation avec Swagger
 
