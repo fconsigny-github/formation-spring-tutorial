@@ -517,6 +517,527 @@ Modifiez le Controller, Le Service et le Repository, Vous obtiendrez ensuite des
 
 ## Application Web (Spring Web MVC)
 
+## Sécurité
+
+### Principes
+
+##### Authentication
+
+L'authentification (authentication en anglais) permet de vérifier que l'utilisateur est bien qui il prétend être
+
+User: Je suis l'administrateur du site web, mon **username** est : admin
+
+Webapp: Très bien, quel est votre mot de passe ?
+
+User: Mon **password** est azerty1234
+
+Webapp: Ok, bienvenue admin
+
+##### Authorization
+
+L'authorisation (authorization en anglais) permet de définir ce que l'utilisateur a le droit de faire
+
+User: Je veux voir les informations de l'utilisateur Michel
+
+Webapp: Vous avez le rôle **USER**, vous n'avez pas la permission de voir les informations des autres utilisateurs
+
+Admin: Je veux voir les informations de l'utilisateur Michel
+
+Webapp: Vous avez le rôle **ADMIN**, vous avez la permission de voir les informations des autres utilisateurs
+
+#### Servlet Filter
+
+Avant de rajouter spring security au projet, nous allons essayer de mettre en place une sécurité pour les endpoints en pur Java
+
+##### C'est quoi un filter ?
+
+Un **Filter** est un composant qui va se positionner entre le browser et un Servlet Java
+
+##### Quel est le rapport avec l'authentification et l'authorization ?
+
+On ne veut pas ajouter la logique de la sécurité dans nos servlets (i.e DispatcherServlet) ou nos @Controllers / @RestControllers 
+
+Le filter va donc exécuter cette logique avant que la requête n'atteigne un @Controller
+
+##### Exemple
+
+Vous allez créer un @Controller HelloController qui expose /api/hello/public, /api/hello/user et /api/hello/admin
+
+Puis créez un filter qui va comparer les paramètres **username** et **password** de la requête aux crédentials : "admin:admin" et "user:password"
+
+L'URL /api/hello/public doit pouvoir être vue sans authentification
+
+L'URL /api/hello/user doit pouvoir être vue par **user** et **admin**
+
+L'URL /api/hello/admin doit pouvoir être vue par **admin**
+
+##### Comment on fait ?
+
+On va d'abord créer un service UserService qui va servir à faire l'authentification et l'authorisation des utilisateurs
+```java
+package com.excilys.formation.spring.security.service;
+
+import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import org.springframework.stereotype.Service;
+
+@Service
+public class UserService {
+  private static final Map<String, String> USER_PASSWORD;
+  private static final Map<String, List<String>> ROLES;
+
+  static {
+    USER_PASSWORD = new HashMap<>();
+    USER_PASSWORD.put("user", "password");
+    USER_PASSWORD.put("admin", "admin");
+
+    ROLES = new HashMap<>();
+    ROLES.put("user", asList("USER"));
+    ROLES.put("admin", asList("USER", "ADMIN"));
+  }
+
+  public boolean checkUser(String username, String password) {
+    return username != null
+        && USER_PASSWORD.containsKey(username)
+        && USER_PASSWORD.get(username).equals(password);
+  }
+
+  public boolean checkRoles(String username, String role) {
+    return username != null
+        && ROLES.getOrDefault(username, emptyList()).contains(role);
+  }
+}
+```
+
+puis un SecurityFilter
+
+```java
+package com.excilys.formation.spring.security.filter;
+
+import com.excilys.formation.spring.security.service.UserService;
+import java.io.IOException;
+import javax.servlet.FilterChain;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpFilter;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import org.springframework.stereotype.Component;
+
+@Component
+public class SecurityServletFilter extends HttpFilter {
+  private final UserService userService;
+
+  public SecurityServletFilter(UserService userService) {
+    this.userService = userService;
+  }
+
+  @Override
+  protected void doFilter(HttpServletRequest request, HttpServletResponse response,
+      FilterChain chain) throws IOException, ServletException {
+
+    if (request.getRequestURI().equals("/api/hello/public")) { // 1
+      return;
+    }
+
+    User user = extractUserFromRequest(request); // 2
+
+    if (!authenticated(user)) { // 3
+      response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+      return;
+    }
+
+    if (!authorized(user, request)) { // 4
+      response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+      return;
+    }
+
+    chain.doFilter(request, response); // 7
+  }
+
+  private User extractUserFromRequest(HttpServletRequest request) {
+    return new User(request.getParameter("username"), request.getParameter("password"));
+  }
+
+  private boolean authenticated(User user) {
+    return userService.checkUser(user.username, user.password);
+  }
+
+  private boolean authorized(User user, HttpServletRequest request) {
+    switch (request.getRequestURI()) {
+      case "/api/hello/admin":
+        return userService.checkRoles(user.username, "ADMIN"); // 5
+      case "/api/hello/user":
+        return userService.checkRoles(user.username, "USER"); // 6
+      default:
+        return true;
+    }
+  }
+
+  private static class User {
+    private final String username;
+    private final String password;
+
+    User(String username, String password) {
+      this.username = username;
+      this.password = password;
+    }
+  }
+}
+```
+
+1. on accepte la requête si l'URL est "/api/hello/public"
+2. on extrait les informations de l'utilisateur dans une classe User
+3. on vérifie que l'utilisateur est bien qui il prétend être (authentification)
+4. on vérifie que l'utilisateur a la permission d'accéder à l'URL
+5. s'il a le rôle ADMIN pour "/api/hello/admin"
+6. s'il a le rôle USER pour "/api/hello/user"
+7. si tous les checks passent on peut continuer vers le DispatcherServlet
+
+##### FilterChain
+
+Ce code fonctionne mais n'est pas vraiment maintenable.
+
+On peut séparer le filter en plusieurs filters et les "chainer"
+
+Ex: PublicMethodFilter -> AuthenticationFilter -> AuthorizationFilter -> DispatcherServlet
+
+Ce concept s'appelle "FilterChain"
+```java
+chain.doFilter(request, response); // 7
+```
+Cette ligne transmet la requête au filter suivant, ou au DispatcherServlet si c'est le dernier de la chaîne
+
+### Spring Security
+
+##### Dépendances
+
+Ajoutez les dépendances suivantes
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-security</artifactId>
+</dependency>
+```
+et 
+```xml
+<dependency>
+    <groupId>org.springframework.security</groupId>
+    <artifactId>spring-security-test</artifactId>
+    <scope>test</scope>
+</dependency>
+```
+
+Ces dépendances fournissent tout ce qui est nécessaire pour configurer Spring Security et pour tester
+
+En redémarrant l'application, on peut voir des nouvelles lignes dans les logs
+```
+2020-08-21 16:11:21.553  INFO 15277 --- [           main] o.s.s.web.DefaultSecurityFilterChain     : Creating filter chain: any request, [org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@381d7219, org.springframework.security.web.context.SecurityContextPersistenceFilter@67a3bd51, org.springframework.security.web.header.HeaderWriterFilter@5e048149, org.springframework.security.web.csrf.CsrfFilter@84487f4, org.springframework.security.web.authentication.logout.LogoutFilter@60859f5a, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter@1fde0371, org.springframework.security.web.authentication.ui.DefaultLoginPageGeneratingFilter@2ab0702e, org.springframework.security.web.authentication.ui.DefaultLogoutPageGeneratingFilter@49fe3142, org.springframework.security.web.authentication.www.BasicAuthenticationFilter@615e3f51, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@56913163, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@14229fa7, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@13fed1ec, org.springframework.security.web.session.SessionManagementFilter@3d5790ea, org.springframework.security.web.access.ExceptionTranslationFilter@29eda4f8, org.springframework.security.web.access.intercept.FilterSecurityInterceptor@1835d3ed]
+```
+
+##### DefaultSecurityFilterChain
+
+Spring Security crée par défaut une FilterChain constituée de 15 filters
+
+![DefaultSecurityFilterChain](annexes/pictures/filterchain.png?raw=true "Default Filter Chain")
+
+* BasicAuthenticationFilter: Essaie d'authentifier l'utilisateur en regardant dans les headers HTTP.
+
+* UsernamePasswordAuthenticationFilter: Essaie d'authentifier l'utilisateur en cherchant un username/password dans les paramètres/body de la requête.
+
+* DefaultLoginPageGeneratingFilter: Génère une page de login si l'option est activée (activée par défaut).
+
+* DefaultLogoutPageGeneratingFilter: Génère une page de logout si l'option est activée (activée par défaut).
+
+* FilterSecurityInterceptor: Applique les authorizations.
+
+#### Configuration
+
+Pour configurer Spring Security, on crée une classe de configuration Spring qui hérite de **WebSecurityConfigurerAdapter**
+```java
+package com.excilys.formation.spring.security.config;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+
+@Configuration
+@EnableWebSecurity // 1
+public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
+
+  @Override
+  protected void configure(HttpSecurity http) throws Exception {  // (2)
+        http
+            .authorizeRequests()
+              .antMatchers("/api/hello/public/**").permitAll() // 3
+              .antMatchers("/api/hello/admin/**").hasRole("ADMIN") // 4
+              .anyRequest().authenticated() // 5
+              .and()
+            .formLogin() // 6
+              .loginPage("/login")
+              .permitAll()
+              .and()
+            .logout() // 7
+              .permitAll()
+              .and()
+            .httpBasic(); // 8
+  }
+}
+```
+
+1. Permet à Spring de considérer cette classe de configuration comme une configuration de sécurité.
+   
+2. On override la configuration par défaut
+ 
+    ```java
+      // default configuration in WebSecurityConfigurerAdapter
+      protected void configure(HttpSecurity http) throws Exception {
+        http
+            .authorizeRequests()
+              .anyRequest().authenticated()
+              .and()
+            .formLogin()
+              .and()
+            .httpBasic();
+      }
+    ``` 
+    WebSecurityConfigurerAdapter propose un **DSL** pour configurer plus facilement la sécurité
+   
+3. Toutes les requêtes arrivant sur /api/hello/public (et /api/hello/public/whatever, /api/hello/public/whatever/whatever, ...) n'ont pas besoin d'être authentifié (.permitAll()).
+   
+4. Toutes les requêtes arrivant sur /api/hello/admin (et /api/hello/admin/whatever, /api/hello/admin/whatever/whatever, ...) doivent d'être authentifiées et l'utilisateur doit avoir le rôle ADMIN (.hasRole("ADMIN")).
+  
+5. Toutes les autres requêtes doivent être authentifiées.
+   
+6. On configure une page de login (username/password dans un formulaire) avec une page custom (/login). On n'a pas besoin d'être authentifié pour arriver sur cette page (sinon on ne peut jamais s'authentifier).
+   
+7. Pareil pour le logout
+   
+8. On configure l'[authentification Basic](https://en.wikipedia.org/wiki/Basic_access_authentication).
+
+#### Authentification
+
+Maintenant se pose la question "Comment Spring authentifie-t'il un utilisateur ?"
+
+Créez une table users en base de données
+```
+create table users (username varchar(255) primary key, password varchar(255));
+```
+Cette table contient les usernames des utilisateurs et leur password (haché, pas en clair hein)
+
+##### UserDetailsService
+
+Pour savoir comment récupérer les informations d'un utilisateur, on doit configurer un bean de type UserDetailsService
+```java
+package org.springframework.security.core.userdetails;
+
+public interface UserDetailsService {
+  UserDetails loadUserByUsername(String username) throws UsernameNotFoundException;
+}
+```
+
+On crée donc une classe implémentant cette interface
+```java
+package com.excilys.formation.spring.security.service;
+
+import static java.util.stream.Collectors.toList;
+import static java.util.Collections.emptyList;
+
+import java.util.List;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+
+@Service
+public class MyUserDetailsService implements UserDetailsService {
+  private final UserRepository userRepository;
+
+  public MyUserDetailsService(UserRepository userRepository) {
+    this.userRepository = userRepository;
+  }
+
+  @Override
+  public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+    return mapToUserDetails(username);
+  }
+
+  private UserDetails mapToUserDetails(String username) {
+    UserEntity userEntity = userRepository.findUserByUsername(username);
+        
+    return new User(userEntity.getUsername(), userEntity.getPassword(), emptyList());
+  }
+}
+```
+
+En supposant que UserEntity est une @Entity et UserRepository un @Repository
+
+On peut aussi utiliser des implémentations déjà existantes de UserDetailsService
+* JdbcUserDetailsManager : implémentation avec une base de données
+```java
+@Bean
+public JdbcUserDetailsManager jdbcUserDetailsManager(DataSource dataSource) {
+  return new JdbcUserDetailsManager(dataSource);
+}
+```
+
+* InMemoryUserDetailsManager : implémentation en mémoire
+```java
+@Bean
+public InMemoryUserDetailsManager inMemoryUserDetailsManager(PasswordEncoder passwordEncoder) {
+  UserDetails user = User.withUsername("user")
+      .password(passwordEncoder.encode("password"))
+      .roles("USER")
+      .build();
+  UserDetails admin = User.withUsername("admin")
+      .password(passwordEncoder.encode("admin"))
+      .roles("ADMIN", "USER")
+      .build();
+    
+  return new InMemoryUserDetailsManager(asList(user, admin));
+}
+```
+
+##### Password Encoder
+Pour que Spring Security puisse hacher les passwords, il faut lui spécifier un PasswordEncoder
+```java
+@Bean
+public PasswordEncoder passwordEncoder() {
+  return new BCryptPasswordEncoder();
+}
+```
+
+#### Authorization
+
+GrantedAuthority est l'interface utilisée par UserDetailsService pour définir les permissions d'un utilisateur
+
+Créez une table authorities en base de données
+```
+create table authorities (username varchar(255), authority varchar(68), foreign key (username) references users(username));
+```
+Cette table contient les rôles des utilisateurs
+
+Et on change l'implémentation de UserDetailsService
+```java
+package com.excilys.formation.spring.security.service;
+
+import static java.util.stream.Collectors.toList;
+
+import java.util.List;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+
+@Service
+public class MyUserDetailsService implements UserDetailsService {
+  private final UserRepository userRepository;
+
+  public MyUserDetailsService(UserRepository userRepository) {
+    this.userRepository = userRepository;
+  }
+
+  @Override
+  public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+    return mapToUserDetails(username);
+  }
+
+  private UserDetails mapToUserDetails(String username) {
+    UserEntity userEntity = userRepository.findUserByUsername(username);
+    
+    List<GrantedAuthority> authorities = mapAuthorities(userEntity.getRoles());
+    
+    return new User(userEntity.getUsername(), userEntity.getPassword(), authorities);
+  }
+
+  private List<GrantedAuthority> mapAuthorities(List<String> roles) {
+    return roles.stream().map(SimpleGrantedAuthority::new).collect(toList());
+  }
+}
+```
+
+#### Configuration
+
+Comme vu plus haut, on peut configurer les roles dans les WebSecurityConfigurerAdapter.
+```java
+@Override
+protected void configure(HttpSecurity http) throws Exception {
+    http
+        .authorizeRequests()
+          .antMatchers("/api/hello/admin/**").hasAuthority("ROLE_ADMIN")
+          .antMatchers("/api/hello/user/**").hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
+          .anyRequest().authenticated()
+          .and()
+        .formLogin()
+          .and()
+        .httpBasic();
+}
+```
+
+Pour accéder à "/api/hello/admin", l'utilisateur doit avoir l'authority "ROLE_ADMIN".
+Pour accéder à "/api/hello/user", l'utilisateur doit avoir l'authority "ROLEUSER" ou "ROLE_ADMIN".
+
+On peut aussi écrire 
+```java
+  .antMatchers("/api/hello/admin/**").hasRole("ADMIN")
+  .antMatchers("/api/hello/user/**").hasRole("USER", "ADMIN")        
+```
+
+Pour un rôle, Spring Security va chercher une authority nommée "ROLE_" + authority
+
+La configuration précédente permet de gérer la sécurité sur des endpoints donnés, mais comment sécuriser plus finement l'application ?
+
+##### Method Security
+
+```java
+@EnableGlobalMethodSecurity(
+  prePostEnabled = true, // (1)
+  securedEnabled = true, // (2)
+  jsr250Enabled = true) // (3)
+``` 
+
+1. active @PreAuthorize et @PostAuthorize
+2. active @Secured
+3. active @RolesAllowed
+
+```java
+package com.excilys.formation.spring.security.service;
+
+import javax.annotation.security.RolesAllowed;
+import org.springframework.security.access.annotation.Secured;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.stereotype.Service;
+
+@Service
+public class HelloService {
+  @Secured("ROLE_USER") // 1
+  public String userHello() {
+    return "hello user";
+  }
+
+  @RolesAllowed("ADMIN") // 2
+  public String adminHello() {
+    return "hello admin";
+  }
+
+  @PreAuthorize("isAuthenticated()") // 3
+  public String publicHello() {
+    return "hello";
+  }
+}
+```
+1. @Secured permet de spécifier une authority
+2. @RolesAllowed permet de spécifier un rôle. Ce n'est pas une annotation spécifique à Spring.
+3. @PreAuthorize permet d'utiliser le SpEL (Spring Expression Language) pour paramétrer plus finement l'authorization
+=======
 ###### Dépendences requises
 Tout d'abord nous aurons besoin du starter web. Celui-ci fournit un Tomcat embarqué.
 ```xml
@@ -622,8 +1143,6 @@ Le contenu statique s'ajoute dans resources\static. Nommons notre page index.htm
 Cette fois, pas besoin de faire quoi que ce soit d'autre. index.html est automatiquement utilisé en tant que page d'accueil.
 
 Redémarrez votre application et rendez-vous sur la page d'accueil. Vous n'aurez plus droit à l'erreur précédente, mais à votre nouvelle page. 
-
-## Sécurité (Spring security)
 
 ## Documentation avec Swagger
 
