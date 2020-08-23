@@ -517,6 +517,112 @@ Modifiez le Controller, Le Service et le Repository, Vous obtiendrez ensuite des
 
 ## Application Web (Spring Web MVC)
 
+###### Dépendences requises
+Tout d'abord nous aurons besoin du starter web. Celui-ci fournit un Tomcat embarqué.
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+```
+
+Pour les vues, nous allons partir sur du Thymeleaf.
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-thymeleaf</artifactId>
+</dependency>
+```
+
+###### Le Controller
+
+Mettez en place un controller (Hello), avec un endpoint GET qui récupère un paramètre. 
+Le endpoint doit retourner le nom d'une vue, ou un objet ModelAndView.
+
+```java
+@Controller
+public class HelloController {
+    @GetMapping("/hello")
+    public String getHello(@RequestParam(required=false, defaultValue="stagiaire")  String name, Model model) {
+        model.addAttribute("name", name);
+        return "hello";
+    }
+}
+```
+
+###### La vue
+
+Maintenant que le controller est en place, il nous manque l'affichage.
+Créez un fichier hello.html dans resources\templates. Nous utiliserons l'attribut "name" ajouté au model dans cette vue.
+
+```html
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Ma super vue</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+</head>
+<body>
+<p th:text="'Hello, ' + ${name} + '!'"></p>
+</body>
+</html>
+
+```
+
+
+Maintenant le plus dur reste à faire, démarrer le projet (oui, déjà).
+Dans la console vous pourrez voir que Tomcat et l'applicationContext se lancent.
+
+```
+INFO 5288 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port(s): 8080 (http)
+INFO 5288 --- [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+INFO 5288 --- [           main] org.apache.catalina.core.StandardEngine  : Starting Servlet engine: [Apache Tomcat/9.0.37]
+INFO 5288 --- [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+INFO 5288 --- [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 613 ms
+INFO 5288 --- [           main] o.s.s.concurrent.ThreadPoolTaskExecutor  : Initializing ExecutorService 'applicationTaskExecutor'
+INFO 5288 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port(s): 8080 (http) with context path ''
+INFO 5288 --- [           main] c.k.springmvc.SpringMvcApplication       : Started SpringMvcApplication in 1.019 seconds (JVM running for 1.572)
+```
+
+Vous remarquerez par contre ne pas avoir d'infos sur le DispatcherServlet, c'est normal.
+Ouvrez votre navigateur et tapé sur votre endpoint (normalement quelque chose du genre http://localhost:8080/hello).
+
+Tadaaa, voilà votre vue. Si vous jouez avec le paramètre "name" (http://localhost:8080/hello?name=YOUR_NAME), vous verrez que la phrase change.
+
+Et si vous retournez sur la console, vous verrez de nouvelles lignes indiquant l'initialisation du DispatcherServlet :
+
+```
+INFO 2412 --- [nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+INFO 2412 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+```
+
+
+###### Ajouter une page statique
+Il y a un défaut dans notre appli, quelqu'un ne connaissant pas l'endpoint sera perdu :(
+
+Allez sur la page d'accueil (http://localhost:8080/), vous aurez droit à une erreur.
+
+Réglons ça, et pour celà il faut ajouter une page d'accueil. Rendons-la statique.
+
+Le contenu statique s'ajoute dans resources\static. Nommons notre page index.html et ajoutons-y un lien vers notre page de salutation.
+
+```html
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Mon index statique</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+</head>
+<body>
+<p><a href="/hello">Greet me</a></p>
+</body>
+</html>
+```
+
+Cette fois, pas besoin de faire quoi que ce soit d'autre. index.html est automatiquement utilisé en tant que page d'accueil.
+
+Redémarrez votre application et rendez-vous sur la page d'accueil. Vous n'aurez plus droit à l'erreur précédente, mais à votre nouvelle page. 
+
 ## Sécurité
 
 ### Principes
@@ -1028,7 +1134,7 @@ public class HelloService {
     return "hello admin";
   }
 
-  @PreAuthorize("isAuthenticated()") // 3
+  @PreAuthorize("isAnonymous() or isAuthenticated()") // 3
   public String publicHello() {
     return "hello";
   }
@@ -1037,112 +1143,62 @@ public class HelloService {
 1. @Secured permet de spécifier une authority
 2. @RolesAllowed permet de spécifier un rôle. Ce n'est pas une annotation spécifique à Spring.
 3. @PreAuthorize permet d'utiliser le SpEL (Spring Expression Language) pour paramétrer plus finement l'authorization
-=======
-###### Dépendences requises
-Tout d'abord nous aurons besoin du starter web. Celui-ci fournit un Tomcat embarqué.
-```xml
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-web</artifactId>
-</dependency>
-```
 
-Pour les vues, nous allons partir sur du Thymeleaf.
-```xml
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-thymeleaf</artifactId>
-</dependency>
-```
-
-###### Le Controller
-
-Mettez en place un controller (Hello), avec un endpoint GET qui récupère un paramètre. 
-Le endpoint doit retourner le nom d'une vue, ou un objet ModelAndView.
-
+#### Tests
 ```java
-@Controller
-public class HelloController {
-    @GetMapping("/hello")
-    public String getHello(@RequestParam(required=false, defaultValue="stagiaire")  String name, Model model) {
-        model.addAttribute("name", name);
-        return "hello";
-    }
+package com.excilys.formation.spring.security.service;
+
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.test.context.support.WithAnonymousUser;
+import org.springframework.security.test.context.support.WithMockUser;
+
+@SpringBootTest
+class HelloServiceTest {
+  @Autowired
+  private HelloService helloService;
+
+  @Test
+  @WithAnonymousUser
+  void hello_public() {
+    helloService.publicHello();
+  }
+
+  @Test
+  @WithAnonymousUser
+  void hello_user_unauthenticated() {
+    assertThrows(AccessDeniedException.class, () -> helloService.userHello());
+  }
+
+  @Test
+  @WithMockUser(username = "user", password = "password", roles = "USER")
+  void hello_user() {
+    helloService.userHello();
+  }
+
+  @Test
+  @WithAnonymousUser
+  void hello_admin_unauthenticated() {
+    assertThrows(AccessDeniedException.class, () -> helloService.adminHello());
+  }
+
+  @Test
+  @WithMockUser(username = "user", password = "password", roles = "USER")
+  void hello_admin_unauthorized() {
+    assertThrows(AccessDeniedException.class, () -> helloService.adminHello());
+  }
+
+  @Test
+  @WithMockUser(username = "admin", password = "admin", roles = "ADMIN")
+  void hello_admin() {
+    helloService.adminHello();
+  }
 }
 ```
-
-###### La vue
-
-Maintenant que le controller est en place, il nous manque l'affichage.
-Créez un fichier hello.html dans resources\templates. Nous utiliserons l'attribut "name" ajouté au model dans cette vue.
-
-```html
-<!DOCTYPE HTML>
-<html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <title>Ma super vue</title>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-</head>
-<body>
-<p th:text="'Hello, ' + ${name} + '!'"></p>
-</body>
-</html>
-
-```
-
-
-Maintenant le plus dur reste à faire, démarrer le projet (oui, déjà).
-Dans la console vous pourrez voir que Tomcat et l'applicationContext se lancent.
-
-```
-INFO 5288 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port(s): 8080 (http)
-INFO 5288 --- [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
-INFO 5288 --- [           main] org.apache.catalina.core.StandardEngine  : Starting Servlet engine: [Apache Tomcat/9.0.37]
-INFO 5288 --- [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
-INFO 5288 --- [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 613 ms
-INFO 5288 --- [           main] o.s.s.concurrent.ThreadPoolTaskExecutor  : Initializing ExecutorService 'applicationTaskExecutor'
-INFO 5288 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port(s): 8080 (http) with context path ''
-INFO 5288 --- [           main] c.k.springmvc.SpringMvcApplication       : Started SpringMvcApplication in 1.019 seconds (JVM running for 1.572)
-```
-
-Vous remarquerez par contre ne pas avoir d'infos sur le DispatcherServlet, c'est normal.
-Ouvrez votre navigateur et tapé sur votre endpoint (normalement quelque chose du genre http://localhost:8080/hello).
-
-Tadaaa, voilà votre vue. Si vous jouez avec le paramètre "name" (http://localhost:8080/hello?name=YOUR_NAME), vous verrez que la phrase change.
-
-Et si vous retournez sur la console, vous verrez de nouvelles lignes indiquant l'initialisation du DispatcherServlet :
-
-```
-INFO 2412 --- [nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
-INFO 2412 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
-```
-
-
-###### Ajouter une page statique
-Il y a un défaut dans notre appli, quelqu'un ne connaissant pas l'endpoint sera perdu :(
-
-Allez sur la page d'accueil (http://localhost:8080/), vous aurez droit à une erreur.
-
-Réglons ça, et pour celà il faut ajouter une page d'accueil. Rendons-la statique.
-
-Le contenu statique s'ajoute dans resources\static. Nommons notre page index.html et ajoutons-y un lien vers notre page de salutation.
-
-```html
-<!DOCTYPE HTML>
-<html>
-<head>
-    <title>Mon index statique</title>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-</head>
-<body>
-<p><a href="/hello">Greet me</a></p>
-</body>
-</html>
-```
-
-Cette fois, pas besoin de faire quoi que ce soit d'autre. index.html est automatiquement utilisé en tant que page d'accueil.
-
-Redémarrez votre application et rendez-vous sur la page d'accueil. Vous n'aurez plus droit à l'erreur précédente, mais à votre nouvelle page. 
 
 ## Documentation avec Swagger
 
