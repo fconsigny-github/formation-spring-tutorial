@@ -1143,7 +1143,7 @@ public class HelloService {
     return "hello admin";
   }
 
-  @PreAuthorize("isAuthenticated()") // 3
+  @PreAuthorize("isAnonymous() or isAuthenticated()") // 3
   public String publicHello() {
     return "hello";
   }
@@ -1152,9 +1152,62 @@ public class HelloService {
 1. @Secured permet de spécifier une authority
 2. @RolesAllowed permet de spécifier un rôle. Ce n'est pas une annotation spécifique à Spring.
 3. @PreAuthorize permet d'utiliser le SpEL (Spring Expression Language) pour paramétrer plus finement l'authorization
-=======
 
+#### Tests
+```java
+package com.excilys.formation.spring.security.service;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.test.context.support.WithAnonymousUser;
+import org.springframework.security.test.context.support.WithMockUser;
+
+@SpringBootTest
+class HelloServiceTest {
+  @Autowired
+  private HelloService helloService;
+
+  @Test
+  @WithAnonymousUser
+  void hello_public() {
+    helloService.publicHello();
+  }
+
+  @Test
+  @WithAnonymousUser
+  void hello_user_unauthenticated() {
+    assertThrows(AccessDeniedException.class, () -> helloService.userHello());
+  }
+
+  @Test
+  @WithMockUser(username = "user", password = "password", roles = "USER")
+  void hello_user() {
+    helloService.userHello();
+  }
+
+  @Test
+  @WithAnonymousUser
+  void hello_admin_unauthenticated() {
+    assertThrows(AccessDeniedException.class, () -> helloService.adminHello());
+  }
+
+  @Test
+  @WithMockUser(username = "user", password = "password", roles = "USER")
+  void hello_admin_unauthorized() {
+    assertThrows(AccessDeniedException.class, () -> helloService.adminHello());
+  }
+
+  @Test
+  @WithMockUser(username = "admin", password = "admin", roles = "ADMIN")
+  void hello_admin() {
+    helloService.adminHello();
+  }
+}
+```
 ## Documentation avec Swagger
 
 ## Migration database avec FlywayDB
