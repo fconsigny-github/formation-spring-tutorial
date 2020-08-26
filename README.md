@@ -515,6 +515,15 @@ Modifiez le Controller, Le Service et le Repository, Vous obtiendrez ensuite des
 
 ## API RESTFUL
 
+Une api est restful à un certain niveau. Ce niveau dépend du nombre de conventions respectées, décrites par les normes REST. 
+
+Le niveau 0 : L’état basique avec des XML dans tous les sens
+Le niveau 1 : ajout de la notion de ressources (http://example.org/objects/1)
+Le niveau 2 : ajout de verbes de statut et de codes d’état
+Le niveau 3 : contrôle hypermedia (HATEOAS)
+
+https://www.maxpou.fr/rest-rmm-model
+
 ## Application Web (Spring Web MVC)
 
 ###### Dépendences requises
